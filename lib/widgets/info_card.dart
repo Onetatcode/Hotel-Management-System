@@ -1,6 +1,11 @@
 import 'package:flutter/material.dart';
 
-/// Standard card used for dashboard summaries and list tiles.
+import '../theme/app_colors.dart';
+import '../theme/app_theme.dart';
+import 'neumorphic_card.dart';
+
+/// Neumorphic summary card with a soft rounded icon container, used for
+/// dashboard summaries and tappable overview tiles.
 class InfoCard extends StatelessWidget {
   const InfoCard({
     super.key,
@@ -8,43 +13,52 @@ class InfoCard extends StatelessWidget {
     required this.child,
     this.icon,
     this.trailing,
+    this.onTap,
   });
 
   final String title;
   final Widget child;
   final IconData? icon;
   final Widget? trailing;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                if (icon != null) ...[
-                  Icon(icon, size: 20, color: Theme.of(context).colorScheme.primary),
-                  const SizedBox(width: 8),
-                ],
-                Expanded(
-                  child: Text(
-                    title,
-                    style: Theme.of(context)
-                        .textTheme
-                        .titleMedium
-                        ?.copyWith(fontWeight: FontWeight.w600),
+    return NeumorphicCard(
+      onTap: onTap,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              if (icon != null) ...[
+                Container(
+                  width: 40,
+                  height: 40,
+                  decoration: BoxDecoration(
+                    color: AppColors.elevated,
+                    borderRadius:
+                        BorderRadius.circular(AppSpacing.radiusIcon),
                   ),
+                  child: Icon(icon, size: 20, color: AppColors.lime),
                 ),
-                ?trailing,
+                const SizedBox(width: 12),
               ],
-            ),
-            const SizedBox(height: 12),
-            child,
-          ],
-        ),
+              Expanded(
+                child: Text(
+                  title,
+                  style: Theme.of(context)
+                      .textTheme
+                      .titleMedium
+                      ?.copyWith(fontWeight: FontWeight.w600),
+                ),
+              ),
+              ?trailing,
+            ],
+          ),
+          const SizedBox(height: 14),
+          child,
+        ],
       ),
     );
   }

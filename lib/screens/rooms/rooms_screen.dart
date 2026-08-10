@@ -6,6 +6,7 @@ import '../../models/room.dart';
 import '../../state/auth_providers.dart';
 import '../../state/data_providers.dart';
 import '../../widgets/error_state.dart';
+import '../../widgets/neumorphic_card.dart';
 import '../../widgets/status_badge.dart';
 import 'room_form_dialog.dart';
 
@@ -50,10 +51,8 @@ class RoomsScreen extends ConsumerWidget {
                 separatorBuilder: (_, _) => const SizedBox(height: 12),
                 itemBuilder: (context, index) {
                   final room = list[index];
-                  return Card(
-                    child: Padding(
-                      padding: const EdgeInsets.all(16),
-                      child: Column(
+                  return NeumorphicCard(
+                    child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Row(
@@ -111,7 +110,6 @@ class RoomsScreen extends ConsumerWidget {
                           ),
                         ],
                       ),
-                    ),
                   );
                 },
               ),

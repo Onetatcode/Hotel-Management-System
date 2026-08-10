@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 
 import '../../models/room.dart';
 import '../../state/data_providers.dart';
+import '../../widgets/neumorphic_card.dart';
 import '../../widgets/status_badge.dart';
 
 class AvailabilityScreen extends ConsumerStatefulWidget {
@@ -75,12 +76,10 @@ class _AvailabilityScreenState extends ConsumerState<AvailabilityScreen> {
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
-          Card(
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
+          NeumorphicCard(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
                   Row(
                     children: [
                       Expanded(
@@ -122,7 +121,6 @@ class _AvailabilityScreenState extends ConsumerState<AvailabilityScreen> {
                   ),
                 ],
               ),
-            ),
           ),
           const SizedBox(height: 16),
           if (_results != null)
@@ -140,7 +138,8 @@ class _AvailabilityScreenState extends ConsumerState<AvailabilityScreen> {
                     style: Theme.of(context).textTheme.titleMedium,
                   ),
           ...?_results?.map(
-            (room) => Card(
+            (room) => NeumorphicCard(
+              padding: EdgeInsets.zero,
               child: ListTile(
                 title: Text('Room ${room.roomNumber}'),
                 subtitle: Text(

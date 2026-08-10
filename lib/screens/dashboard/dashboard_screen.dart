@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
 import '../../models/booking.dart';
@@ -65,6 +66,7 @@ class DashboardScreen extends ConsumerWidget {
                       return InfoCard(
                         icon: Icons.meeting_room_outlined,
                         title: 'Current Occupancy',
+                        onTap: () => context.go('/rooms'),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
@@ -91,6 +93,7 @@ class DashboardScreen extends ConsumerWidget {
                   InfoCard(
                     icon: Icons.login,
                     title: "Today's Arrivals (${arrivals.length})",
+                    onTap: () => context.go('/bookings'),
                     child: arrivals.isEmpty
                         ? const Text('No arrivals today.')
                         : Column(
@@ -103,6 +106,7 @@ class DashboardScreen extends ConsumerWidget {
                   InfoCard(
                     icon: Icons.logout,
                     title: "Today's Departures (${departures.length})",
+                    onTap: () => context.go('/bookings'),
                     child: departures.isEmpty
                         ? const Text('No departures today.')
                         : Column(
@@ -115,6 +119,7 @@ class DashboardScreen extends ConsumerWidget {
                   InfoCard(
                     icon: Icons.calendar_month_outlined,
                     title: 'Active Bookings',
+                    onTap: () => context.go('/bookings'),
                     child: Text(
                       '$active booking(s) booked or checked in',
                       style: Theme.of(context).textTheme.headlineSmall,

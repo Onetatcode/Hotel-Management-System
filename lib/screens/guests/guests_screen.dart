@@ -6,6 +6,7 @@ import '../../models/booking.dart';
 import '../../models/guest.dart';
 import '../../state/data_providers.dart';
 import '../../widgets/error_state.dart';
+import '../../widgets/neumorphic_card.dart';
 import '../../widgets/status_badge.dart';
 import 'guest_form_dialog.dart';
 
@@ -51,7 +52,6 @@ class _GuestsScreenState extends ConsumerState<GuestsScreen> {
               decoration: const InputDecoration(
                 labelText: 'Search guests',
                 prefixIcon: Icon(Icons.search),
-                border: OutlineInputBorder(),
               ),
               onChanged: (value) => setState(() => _query = value),
             ),
@@ -178,7 +178,8 @@ class _GuestCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final dateFormat = DateFormat('MMM d, yyyy');
-    return Card(
+    return NeumorphicCard(
+      padding: EdgeInsets.zero,
       child: ExpansionTile(
         title: Text(guest.fullName),
         subtitle: Text([

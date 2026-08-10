@@ -1,36 +1,38 @@
 import 'package:flutter/material.dart';
 
-/// Small colored status chip used across the app (room, booking, payment
-/// statuses). Unknown statuses fall back to a neutral gray.
+import '../theme/app_colors.dart';
+import '../theme/app_theme.dart';
+
+/// Outlined status pill (room, booking, payment statuses) in the neumorphic
+/// palette. Unknown statuses fall back to neutral gray.
 class StatusBadge extends StatelessWidget {
   const StatusBadge({super.key, required this.status});
 
   final String status;
 
   static const Map<String, Color> _colors = {
-    'available': Color(0xFF2E7D32),
-    'occupied': Color(0xFFC62828),
-    'cleaning': Color(0xFF1565C0),
-    'out_of_service': Color(0xFF616161),
-    'booked': Color(0xFF1565C0),
-    'checked_in': Color(0xFF00838F),
-    'checked_out': Color(0xFF616161),
-    'cancelled': Color(0xFFC62828),
-    'unpaid': Color(0xFFEF6C00),
-    'paid': Color(0xFF2E7D32),
-    'admin': Color(0xFF283593),
-    'front_desk': Color(0xFF00838F),
+    'available': AppColors.lime,
+    'occupied': AppColors.softRed,
+    'cleaning': AppColors.softBlue,
+    'out_of_service': AppColors.textMuted,
+    'booked': AppColors.textMuted,
+    'checked_in': AppColors.lime,
+    'checked_out': AppColors.textMuted,
+    'cancelled': AppColors.softRed,
+    'unpaid': AppColors.amber,
+    'paid': AppColors.lime,
+    'admin': AppColors.lime,
+    'front_desk': AppColors.softBlue,
   };
 
   @override
   Widget build(BuildContext context) {
-    final color = _colors[status.toLowerCase()] ?? Colors.grey.shade600;
+    final color = _colors[status.toLowerCase()] ?? AppColors.textMuted;
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
       decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.12),
-        borderRadius: BorderRadius.circular(999),
-        border: Border.all(color: color.withValues(alpha: 0.4)),
+        borderRadius: BorderRadius.circular(AppSpacing.radiusPill),
+        border: Border.all(color: color.withValues(alpha: 0.55), width: 1),
       ),
       child: Text(
         status.replaceAll('_', ' '),

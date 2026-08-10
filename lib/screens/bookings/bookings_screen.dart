@@ -6,6 +6,7 @@ import '../../models/booking.dart';
 import '../../models/enums.dart';
 import '../../state/data_providers.dart';
 import '../../widgets/error_state.dart';
+import '../../widgets/neumorphic_card.dart';
 import '../../widgets/status_badge.dart';
 import 'booking_form_sheet.dart';
 
@@ -52,7 +53,6 @@ class _BookingsScreenState extends ConsumerState<BookingsScreen> {
               decoration: const InputDecoration(
                 labelText: 'Search by guest',
                 prefixIcon: Icon(Icons.search),
-                border: OutlineInputBorder(),
               ),
               onChanged: (_) => setState(() {}),
             ),
@@ -121,76 +121,73 @@ class _BookingCard extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final controller = ref.read(bookingsControllerProvider.notifier);
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    booking.guestName ?? 'Guest',
-                    style: Theme.of(context)
-                        .textTheme
-                        .titleMedium
-                        ?.copyWith(fontWeight: FontWeight.w600),
-                  ),
+    return NeumorphicCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  booking.guestName ?? 'Guest',
+                  style: Theme.of(context)
+                      .textTheme
+                      .titleMedium
+                      ?.copyWith(fontWeight: FontWeight.w600),
                 ),
-                StatusBadge(status: booking.status.wire),
+              ),
+              StatusBadge(status: booking.status.wire),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text('Room ${booking.roomNumber ?? '—'}'),
+          Text(
+            '${dateFormat.format(booking.checkInDate)} → '
+            '${dateFormat.format(booking.checkOutDate)} '
+            '(${booking.nights} nights)',
+          ),
+          Text('\$${booking.totalPrice.toStringAsFixed(2)}'),
+          const SizedBox(height: 4),
+          Align(
+            alignment: Alignment.centerLeft,
+            child: StatusBadge(status: booking.paymentStatus.wire),
+          ),
+          const SizedBox(height: 8),
+          Wrap(
+            spacing: 8,
+            children: [
+              if (booking.status == BookingStatus.booked) ...[
+                FilledButton(
+                  onPressed: () => _run(
+                    context,
+                    () => controller.checkIn(booking),
+                  ),
+                  child: const Text('Check In'),
+                ),
+                OutlinedButton(
+                  onPressed: () => _run(
+                    context,
+                    () => controller.cancel(booking),
+                  ),
+                  child: const Text('Cancel'),
+                ),
+                OutlinedButton(
+                  onPressed: () => showBookingFormSheet(context, booking: booking),
+                  child: const Text('Edit'),
+                ),
               ],
-            ),
-            const SizedBox(height: 8),
-            Text('Room ${booking.roomNumber ?? '—'}'),
-            Text(
-              '${dateFormat.format(booking.checkInDate)} → '
-              '${dateFormat.format(booking.checkOutDate)} '
-              '(${booking.nights} nights)',
-            ),
-            Text('\$${booking.totalPrice.toStringAsFixed(2)}'),
-            const SizedBox(height: 4),
-            Align(
-              alignment: Alignment.centerLeft,
-              child: StatusBadge(status: booking.paymentStatus.wire),
-            ),
-            const SizedBox(height: 8),
-            Wrap(
-              spacing: 8,
-              children: [
-                if (booking.status == BookingStatus.booked) ...[
-                  OutlinedButton(
-                    onPressed: () => _run(
-                      context,
-                      () => controller.checkIn(booking),
-                    ),
-                    child: const Text('Check In'),
+              if (booking.status == BookingStatus.checkedIn) ...[
+                FilledButton(
+                  onPressed: () => _run(
+                    context,
+                    () => controller.checkOut(booking),
                   ),
-                  OutlinedButton(
-                    onPressed: () => _run(
-                      context,
-                      () => controller.cancel(booking),
-                    ),
-                    child: const Text('Cancel'),
-                  ),
-                  OutlinedButton(
-                    onPressed: () => showBookingFormSheet(context, booking: booking),
-                    child: const Text('Edit'),
-                  ),
-                ],
-                if (booking.status == BookingStatus.checkedIn) ...[
-                  FilledButton(
-                    onPressed: () => _run(
-                      context,
-                      () => controller.checkOut(booking),
-                    ),
-                    child: const Text('Check Out'),
-                  ),
-                ],
+                  child: const Text('Check Out'),
+                ),
               ],
-            ),
-          ],
-        ),
+            ],
+          ),
+        ],
       ),
     );
   }
