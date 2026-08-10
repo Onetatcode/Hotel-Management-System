@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../state/auth_providers.dart';
+import '../../widgets/error_state.dart';
 import '../../widgets/status_badge.dart';
 
 class ProfileScreen extends ConsumerWidget {
@@ -25,7 +26,10 @@ class ProfileScreen extends ConsumerWidget {
                 padding: const EdgeInsets.all(24),
                 child: profile.when(
                   loading: () => const Center(child: CircularProgressIndicator()),
-                  error: (error, _) => Text('Failed to load profile: $error'),
+                  error: (error, _) => ErrorState(
+                    message: 'Failed to load profile.',
+                    onRetry: () => ref.refresh(staffProfileProvider.future),
+                  ),
                   data: (p) => Column(
                     mainAxisSize: MainAxisSize.min,
                     crossAxisAlignment: CrossAxisAlignment.start,

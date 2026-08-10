@@ -5,6 +5,7 @@ import '../../models/enums.dart';
 import '../../models/room.dart';
 import '../../state/auth_providers.dart';
 import '../../state/data_providers.dart';
+import '../../widgets/error_state.dart';
 import '../../widgets/status_badge.dart';
 import 'room_form_dialog.dart';
 
@@ -37,7 +38,10 @@ class RoomsScreen extends ConsumerWidget {
       ),
       body: rooms.when(
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (e, _) => Center(child: Text('Failed to load rooms: $e')),
+        error: (e, _) => ErrorState(
+          message: 'Failed to load rooms.',
+          onRetry: () => ref.refresh(roomsControllerProvider.future),
+        ),
         data: (list) => list.isEmpty
             ? const Center(child: Text('No rooms yet — add one with + .'))
             : ListView.separated(

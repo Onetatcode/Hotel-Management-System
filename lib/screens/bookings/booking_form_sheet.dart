@@ -86,7 +86,14 @@ class _BookingFormSheetState extends ConsumerState<BookingFormSheet> {
         _loadingRooms = false;
       });
     } catch (_) {
-      if (mounted) setState(() => _loadingRooms = false);
+      if (mounted) {
+        setState(() => _loadingRooms = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Could not load available rooms. Try again.'),
+          ),
+        );
+      }
     }
   }
 

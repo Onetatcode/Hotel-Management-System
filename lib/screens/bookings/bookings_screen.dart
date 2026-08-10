@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 import '../../models/booking.dart';
 import '../../models/enums.dart';
 import '../../state/data_providers.dart';
+import '../../widgets/error_state.dart';
 import '../../widgets/status_badge.dart';
 import 'booking_form_sheet.dart';
 
@@ -71,7 +72,10 @@ class _BookingsScreenState extends ConsumerState<BookingsScreen> {
           Expanded(
             child: bookings.when(
               loading: () => const Center(child: CircularProgressIndicator()),
-              error: (e, _) => Center(child: Text('Failed to load bookings: $e')),
+              error: (e, _) => ErrorState(
+                message: 'Failed to load bookings.',
+                onRetry: () => ref.refresh(bookingsControllerProvider.future),
+              ),
               data: (_) => visible.isEmpty
                   ? const Center(child: Text('No bookings match the filters.'))
                   : RefreshIndicator(

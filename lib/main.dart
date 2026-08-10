@@ -25,6 +25,7 @@ class HotelManagementApp extends ConsumerWidget {
     return MaterialApp.router(
       title: 'Hotel Management App',
       theme: AppTheme.light,
+      debugShowCheckedModeBanner: false,
       routerConfig: router,
     );
   }

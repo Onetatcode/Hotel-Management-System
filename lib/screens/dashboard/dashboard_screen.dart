@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 import '../../models/booking.dart';
 import '../../models/enums.dart';
 import '../../state/data_providers.dart';
+import '../../widgets/error_state.dart';
 import '../../widgets/info_card.dart';
 import '../../widgets/status_badge.dart';
 
@@ -29,7 +30,9 @@ class DashboardScreen extends ConsumerWidget {
               padding: EdgeInsets.all(32),
               child: Center(child: CircularProgressIndicator()),
             ),
-            error: (e, _) => Text('Failed to load data: $e'),
+            error: (e, _) => const ErrorState(
+              message: 'Failed to load dashboard data.',
+            ),
             data: (list) {
               final arrivals = list
                   .where((b) =>
@@ -52,7 +55,10 @@ class DashboardScreen extends ConsumerWidget {
                 children: [
                   rooms.when(
                     loading: () => const SizedBox.shrink(),
-                    error: (_, _) => const SizedBox.shrink(),
+                    error: (_, _) => Text(
+                      'Room occupancy unavailable.',
+                      style: Theme.of(context).textTheme.bodySmall,
+                    ),
                     data: (roomList) {
                       final occupied =
                           roomList.where((r) => r.status == RoomStatus.occupied).length;

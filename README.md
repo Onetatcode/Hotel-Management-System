@@ -74,37 +74,37 @@ A modern hotel management app built with **Flutter** (mobile + web) and **Supaba
 
 ## Screenshots
 
-> Proof-of-concept captures from the Beta 1.1 build.
+> Proof-of-concept captures from the Beta 1.1 build. (Click an image for the full-size version.)
 
 ### Auth
 
 | | |
 |---|---|
-| ![Login screen](App%20POC%201.0/Beta_Login_screen.png) | ![Profile screen](App%20POC%201.0/Beta_Profile_screen.png) |
+| <img src="App%20POC%201.0/Beta_Login_screen.png" alt="Login screen" width="280"> | <img src="App%20POC%201.0/Beta_Profile_screen.png" alt="Profile screen" width="280"> |
 | **Login** — email/password with validation and loading/error states | **Profile** — staff name, role badge, email, Sign Out |
 
 ### Core Screens (Beta 1.1)
 
 | | |
 |---|---|
-| ![Home screen](App%20POC%201.0/Beta_1.1_Home_screen.png) | ![Rooms screen](App%20POC%201.0/Beta_1.1_Rooms_screen.png) |
+| <img src="App%20POC%201.0/Beta_1.1_Home_screen.png" alt="Home screen" width="280"> | <img src="App%20POC%201.0/Beta_1.1_Rooms_screen.png" alt="Rooms screen" width="280"> |
 | **Dashboard** — today's arrivals/departures, current occupancy, active bookings | **Rooms** — live room list with status badges and admin controls |
 
 | | |
 |---|---|
-| ![Availability screen](App%20POC%201.0/Beta_1.1_Availability_screen.png) | ![Booking screen](App%20POC%201.0/Beta_1.1_Booking_screen.png) |
+| <img src="App%20POC%201.0/Beta_1.1_Availability_screen.png" alt="Availability screen" width="280"> | <img src="App%20POC%201.0/Beta_1.1_Booking_screen.png" alt="Booking screen" width="280"> |
 | **Availability Search** — date-range picker and free-room results | **Bookings** — full lifecycle with filters, search, check-in/out/cancel |
 
 | | |
 |---|---|
-| ![Guests screen](App%20POC%201.0/Beta_1.1_Guests_screen.png) | |
+| <img src="App%20POC%201.0/Beta_1.1_Guests_screen.png" alt="Guests screen" width="280"> | |
 | **Guests** — records, search, and per-guest booking history | |
 
 ### Database
 
 | | |
 |---|---|
-| ![Database tables](App%20POC%201.0/Database_Tables.png) | ![Database schema](App%20POC%201.0/Database_schema_visual.png) |
+| <img src="App%20POC%201.0/Database_Tables.png" alt="Database tables" width="240"> | <img src="App%20POC%201.0/Database_schema_visual.png" alt="Database schema" width="360"> |
 | **Database tables** — `staff`, `rooms`, `guests`, `bookings` in Supabase | **Schema visual** — relationships, FKs, enums and constraints |
 
 ---
@@ -262,13 +262,52 @@ flutter build apk --release              # Android APK → build/app/outputs/flu
 
 ---
 
+## Deployment
+
+### Before deploying (checklist)
+1. **Rotate credentials** — the `test123` dev accounts (`*.hotelms.test`) must be deleted and replaced with real staff users (Authentication → Users in the dashboard); re-run `supabase/seed.sql` for their `staff` rows.
+2. **Environment separation** — keep a `.env` per environment (dev/staging/prod). `.env` is git-ignored; never commit real keys. The anon/publishable key is safe to expose; the **service-role key and DB password must never leave the dashboard**.
+3. **RLS is the security boundary** — it ships with the migrations; do not disable it in production.
+
+### Web hosting
+The web build (`build/web/`) is a static bundle — deployable to:
+- **Supabase Hosting** (same dashboard as the backend; easiest)
+- Netlify / Vercel / Cloudflare Pages (standard static deploys)
+- GitHub Pages (repo already on GitHub)
+
+There is no server-side rendering requirement — the app talks to Supabase directly from the browser (CORS is already configured for Supabase projects).
+
+### Android
+- `flutter build apk --release` → distribute via the Google Play Console or sideload the APK.
+
+### Known trade-off (documented decision)
+Booking `total_price` is computed **client-side** (room rate × nights) and stored with the booking. If you want server-side enforcement, add a trigger before exposing real payments:
+
+```sql
+create or replace function public.compute_booking_total()
+returns trigger language plpgsql security definer set search_path = public as $$
+begin
+  new.total_price := round(
+    (select rate_per_night from public.rooms where id = new.room_id) *
+    (new.check_out_date - new.check_in_date), 2);
+  return new;
+end $$;
+
+create trigger bookings_compute_total
+before insert or update on public.bookings
+for each row execute function public.compute_booking_total();
+```
+
+---
+
 ## Roadmap
 
 - [x] **Phase 1** — Project initialization (web target, deps, config, app shell)
 - [x] **Phase 2** — Supabase setup (schema, auth, seed, RLS — verified live)
 - [x] **Phase 3** — Navigation & app shell (go_router, responsive shell, design system, auth wiring)
 - [x] **Phase 4** — Core data integration (rooms, availability, bookings, guests, dashboard — all live)
-- [ ] **Phase 5** — Polish & deployment prep (error/loading states audit, accessibility, performance, deployment)
+- [x] **Phase 5** — Polish & deployment prep (error/loading/empty states, accessibility, performance check, deployment guide)
+- [ ] Post-launch: payment processing, email notifications, multi-property support
 
 ---
 

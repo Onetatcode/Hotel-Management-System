@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 import '../../models/booking.dart';
 import '../../models/guest.dart';
 import '../../state/data_providers.dart';
+import '../../widgets/error_state.dart';
 import '../../widgets/status_badge.dart';
 import 'guest_form_dialog.dart';
 
@@ -58,7 +59,10 @@ class _GuestsScreenState extends ConsumerState<GuestsScreen> {
           Expanded(
             child: guests.when(
               loading: () => const Center(child: CircularProgressIndicator()),
-              error: (e, _) => Center(child: Text('Failed to load guests: $e')),
+              error: (e, _) => ErrorState(
+                message: 'Failed to load guests.',
+                onRetry: () => ref.refresh(guestsControllerProvider.future),
+              ),
               data: (list) {
                 final query = _query?.trim().toLowerCase() ?? '';
                 final visible = query.isEmpty
