@@ -136,3 +136,97 @@ TODOs/hardcoded values: none — dev credentials live in Supabase, not code. Hom
 Overall status: **Ready to proceed**
 - Blocking items: none. Phase 2 goal met: staff can log in, data model exists with row-level security, role data flows to the app.
 - Next task set in `task_today.md` per Phase 3 — Navigation & App Shell UI.
+
+---
+
+### Audit: Phase 3 — Navigation & App Shell UI
+**Date:** 2026-08-09
+**Auditor:** Assistant lead developer
+
+#### 1. Codebase Analysis
+Files created/modified this phase:
+- `lib/theme/app_theme.dart` — design system seed: `ColorScheme.fromSeed(indigo)`, `AppBarTheme`, `CardThemeData`, `InputDecorationTheme`, `FilledButtonTheme`, `AppSpacing` constants
+- `lib/widgets/status_badge.dart` — reusable status chip (room/booking/payment/role statuses, neutral fallback)
+- `lib/widgets/info_card.dart` — reusable titled card
+- `lib/router/app_router.dart` — go_router table: `/login` + 6 shell routes via `StatefulShellRoute.indexedStack`; auth redirects (anon → `/login`, `/` → `/login` or `/dashboard`, logged-in `/login` → `/dashboard`); `routerProvider` watches `authStateProvider`
+- `lib/screens/shell/app_shell.dart` — single responsive shell: `NavigationRail` ≥700px, `NavigationBar` <700px, 6 destinations, `goBranch` tab switching
+- `lib/screens/{dashboard,rooms,availability,bookings,guests,profile}/…` — routed placeholder screens; `profile_screen.dart` is real (name, role badge, email, Sign Out from `staffProfileProvider`)
+- `lib/main.dart` — `MaterialApp.router` + `AppTheme.light`; removed hardcoded auth gate
+- Deleted: `lib/screens/home_screen.dart` (superseded by shell + Profile)
+- `test/widget_test.dart` — rewritten: anon → Login; signed-in → Dashboard shell → tap Profile → role shown
+
+TODOs/hardcoded values: placeholder screen texts intentionally defer to Phase 4; no mock data anywhere.
+
+#### 2. Plan Comparison
+- ✅ Responsive navigation shell — single shared shell, bottom nav on mobile widths, side rail on desktop (breakpoint 700px)
+- ✅ Primary routes — Dashboard, Rooms, Availability Search, Bookings, Guests, Profile
+- ✅ Design system — typography/spacing/palette via ThemeData + reusable components (StatusBadge, InfoCard, AppSpacing)
+- ✅ Navigation wired to real auth state — router redirects: unauthenticated always land on Login; authenticated session restored on cold start lands on Dashboard
+
+#### 3. Missing Elements / Errors / Incorrect Implementations
+- Deviations (flagged, acceptable): placeholders instead of mock data; nav identical for both roles (role-specific nav differences deferred to Phase 4 features); 700px breakpoint chosen as reasonable default.
+- Dev-time fixes: Flutter renamed `NavigationBarDestination` → `NavigationDestination` in installed SDK; initial `/` needed an explicit redirect for signed-in users (test caught it).
+- No new error_bug entries. No security impact (no new data access).
+
+#### 4. Platform Parity Check
+- Verified on web (Edge, port 8384): sign-in → shell, all 6 tabs, Profile role/sign-out, window resized below/above 700px (bottom nav ↔ rail switch), session persisted across reload, no exceptions in run log.
+- Mobile: narrow-width layout verified by resizing the web window; Android emulator visual run not repeated this phase (same code path by construction) — minor gap, acceptable.
+
+#### 5. Orphaned / Unused Files
+- No dead code. `go_router` now used. `intl` still pending (Phase 4). `update_room_status` RPC unused by app yet (Phase 4). `New folder/` stray dir still present (not blocking).
+
+#### 6. Verdict
+Overall status: **Ready to proceed**
+- Blocking items: none. Phase 3 goal met: responsive shell with real auth wiring; app is a genuine multi-screen app.
+- Next task set in `task_today.md` per Phase 4 — Core Data Integration & State Management.
+
+---
+
+### Audit: Phase 4 — Core Data Integration & State Management
+**Date:** 2026-08-10
+**Auditor:** Assistant lead developer
+
+#### 1. Codebase Analysis
+Files created/modified this phase:
+- `lib/models/enums.dart` — RoomStatus, BookingStatus, PaymentStatus, StaffRole with wire values matching SQL enums + lenient `fromWire` fallbacks
+- `lib/models/room.dart`, `guest.dart`, `booking.dart` — schema-mirrored models with joins (`room_number`, `full_name` embedded), `copyWith`, `nights` calc
+- `lib/services/rooms_service.dart` — list/create/update/delete + `updateStatus` via `update_room_status` RPC
+- `lib/services/guests_service.dart` — list (ilike search)/create/update/delete
+- `lib/services/bookings_service.dart` — list (with joins), create, update, cancel (frees room if checked in), check-in (room→occupied), check-out (room→cleaning), `listAvailableRooms` (excludes overlapping booked/checked_in + out-of-service)
+- `lib/state/data_providers.dart` — service providers + `RoomsController`/`GuestsController`/`BookingsController` (AsyncNotifiers, invalidate-on-write) + `filteredBookingsProvider`/`BookingFilter` (status + guest search)
+- `lib/screens/rooms/rooms_screen.dart` + `room_form_dialog.dart` — list, admin-only add/edit/delete, status dropdown for all staff, admin UI hidden for front desk
+- `lib/screens/guests/guests_screen.dart` + `guest_form_dialog.dart` — search, add/edit/delete, per-guest booking history expansion
+- `lib/screens/bookings/bookings_screen.dart` + `booking_form_sheet.dart` — filter chips + guest search, create/edit (dates, guest, room w/ availability, auto total), check-in/check-out/cancel actions
+- `lib/screens/availability/availability_screen.dart` — date-range picker → available rooms
+- `lib/screens/dashboard/dashboard_screen.dart` — occupancy (count + progress bar), today's arrivals, today's departures, active bookings — all derived live
+- `lib/widgets/status_badge.dart` — aligned to real schema statuses (removed `maintenance`/`refunded`, added `out_of_service`)
+- `test/models_test.dart` (new), `test/widget_test.dart` (data-provider overrides)
+
+TODOs/hardcoded values: none. No mock data anywhere; every screen reads through services/controllers.
+
+#### 2. Plan Comparison
+- ✅ Service layer — one class per resource; widgets never touch Supabase directly (grep-verified pattern)
+- ✅ State layer — controllers backed by services; shared state means Dashboard/list stay in sync (invalidations propagate)
+- ✅ Room Management — list + admin add/edit/delete through state layer
+- ✅ Availability Search — date range → filtered room list
+- ✅ Booking creation/edit/cancel/check-in/check-out — all through BookingsService; shared state updates Dashboard + lists
+- ✅ Guest records — create/attach to booking, view guest's booking history
+- ✅ Dashboard — today's arrivals/departures, current occupancy from live state
+- ✅ Booking list/history with search + filters (status chips + guest search + client-side date filter primitive)
+
+#### 3. Missing Elements / Errors / Incorrect Implementations
+- Flagged decisions (all deliberate, documented): **check-out sets room to `cleaning`** (housekeeping flips to available manually) — resolves the testing.md 4.5 open question; **`total_price` computed client-side** (room rate × nights, re-sent on edit) — no DB trigger yet, flagged for Phase 5 consideration; booking edit allowed only while `booked`; room delete blocked by FK when bookings exist (surface error shown).
+- Security verified: RLS unchanged; front desk sees no room write UI; status RPC used for all status flips; front-desk functional pass confirmed restricted UI.
+- No new error_bug entries. Dev-time fixes: `AsyncNotifier.update` collision → renamed to `save`; postgrest builder ordering (`.ilike` must precede `.order()` since `select()` returns a filter builder but `order()` downgrades it); dialog return records needed explicit nullability.
+
+#### 4. Platform Parity Check
+- Web (Edge, port 8385): full admin flow (rooms CRUD, guests, booking lifecycle incl. check-in/out/cancel, availability, dashboard live updates, filters/search) + front-desk restricted UI — user-verified, no exceptions in run log.
+- Mobile-width parity: same code path; verified visually via window resize; Android emulator not re-run this phase (consistent with prior phases' minor gap).
+
+#### 5. Orphaned / Unused Files
+- No dead code; no unused dependencies (`intl` now used for date formatting). `New folder/` stray dir still present (not blocking). BookingFilter date field is client-side only — fine.
+
+#### 6. Verdict
+Overall status: **Ready to proceed**
+- Blocking items: none. Phase 4 goal met — all screens wired to live Supabase data through the state layer; zero hardcoded data.
+- Next task set in `task_today.md` per Phase 5 — Polish & deployment prep.

@@ -1,8 +1,8 @@
 # Hotel Management System
 
-A modern hotel management app built with **Flutter** (mobile + web) and **Supabase** (PostgreSQL + Auth + Row Level Security). Staff can log in with role-based access (Admin / Front Desk), manage rooms, guests, and bookings, and track availability — all through a single responsive codebase that adapts between mobile and desktop layouts.
+A modern hotel management app built with **Flutter** (mobile + web) and **Supabase** (PostgreSQL + Auth + Row Level Security). Staff log in with role-based access (Admin / Front Desk) and manage rooms, guests, and bookings — from availability search to check-in/out — through one responsive codebase that adapts between mobile and desktop layouts.
 
-> **Status: Beta 1.0** — Phase 1 (project init), Phase 2 (Supabase setup: schema, auth, RLS) and Phase 3 (navigation shell) are complete. Phase 4 (live data integration: rooms, availability, bookings, guests, dashboard) is in progress.
+> **Status: Beta 1.1** — Phases 1–4 complete: project init, Supabase setup (schema + auth + RLS), responsive navigation shell, and full live-data integration (rooms, availability, bookings, guests, dashboard). Phase 5 (polish & deployment prep) is next.
 
 ![Flutter](https://img.shields.io/badge/Flutter-3.44-02569B?logo=flutter&logoColor=white)
 ![Dart](https://img.shields.io/badge/Dart-3.12-0175C2?logo=dart&logoColor=white)
@@ -34,22 +34,39 @@ A modern hotel management app built with **Flutter** (mobile + web) and **Supaba
 
 ### Auth & Roles
 - Email/password sign-in with session persistence (stays signed in across restarts)
-- Role-aware access: **Admin** and **Front Desk** staff roles stored in the `staff` table
+- Role-aware access: **Admin** and **Front Desk** staff roles, enforced by both the UI and Row Level Security
 - Unauthenticated users are always redirected to the Login screen
-- Row Level Security enforces exactly what each role can see and do
+- Profile screen shows the signed-in staff member, role badge, and email with one-tap Sign Out
 
-### Navigation Shell (Phase 3)
+### Responsive Navigation Shell
 - Single shared shell, breakpoint-driven: **bottom navigation bar** on mobile widths, **side navigation rail** on web/desktop widths
-- Routes: Dashboard, Rooms, Availability Search, Bookings, Guests, Profile
+- Six destinations: Dashboard, Rooms, Availability Search, Bookings, Guests, Profile
+- go_router routing with auth-aware redirects (session restored on cold start → straight to Dashboard)
 
-### Core Data Model (Phase 2)
-- `staff` — profiles linked to auth users with role (`admin` / `front_desk`)
-- `rooms` — room number, type, nightly rate, capacity, live status (`available` / `occupied` / `cleaning` / `maintenance`)
-- `guests` — contact details and ID number
-- `bookings` — room/guest links, check-in/out dates, status lifecycle (`booked` → `checked_in` → `checked_out` / `cancelled`), total price, payment status, created-by tracking
+### Rooms (live data, Admin-managed)
+- Room list with number, type, nightly rate, capacity, and live status badge
+- **Admin only:** add / edit / delete rooms (write controls hidden for Front Desk)
+- All staff can flip a room's status (`available` / `occupied` / `cleaning` / `out of service`) via a restricted RPC
+
+### Availability Search
+- Pick check-in / check-out dates → instantly see rooms that are free for that range
+- Correctly excludes rooms with overlapping active bookings and out-of-service rooms
+
+### Bookings (full lifecycle)
+- Create bookings with guest + dates + room; **total price auto-computed** (rate × nights)
+- Status lifecycle: `booked → checked in → checked out`, with room status kept in sync (check-in marks the room occupied; check-out marks it for cleaning)
+- Cancel anytime; editing allowed while the booking is still `booked`
+- Filter chips (status) + guest-name search; every change instantly reflects on the Dashboard
+
+### Guests
+- Guest records with contact email / phone / ID number
+- Search by name, add / edit / delete, and expand any guest to see their **booking history**
+
+### Dashboard
+- Live metrics derived from shared state: **current occupancy** (count + progress bar), **today's arrivals**, **today's departures**, and active bookings
 
 ### Security
-- Row Level Security on every table; Admin-only room management; Front Desk can change room status via a restricted RPC (`update_room_status`) without full room-edit rights
+- Row Level Security on every table; Admin-only room management; Front Desk changes room status via a restricted `update_room_status` RPC without room-edit rights
 - Anonymous access fully blocked (verified with live probes)
 - Secrets never committed: `.env` is git-ignored
 
@@ -57,12 +74,33 @@ A modern hotel management app built with **Flutter** (mobile + web) and **Supaba
 
 ## Screenshots
 
-> Proof-of-concept captures from the Beta 1.0 build.
+> Proof-of-concept captures from the Beta 1.1 build.
+
+### Auth
 
 | | |
 |---|---|
-| ![Login screen](App%20POC%201.0/Beta_Login_screen.png) | ![Home screen](App%20POC%201.0/Beta_Home_screen.png) |
-| **Login screen** — email/password with validation and loading/error states | **Signed-in view** — shows staff name, role, and email with a Sign Out action |
+| ![Login screen](App%20POC%201.0/Beta_Login_screen.png) | ![Profile screen](App%20POC%201.0/Beta_Profile_screen.png) |
+| **Login** — email/password with validation and loading/error states | **Profile** — staff name, role badge, email, Sign Out |
+
+### Core Screens (Beta 1.1)
+
+| | |
+|---|---|
+| ![Home screen](App%20POC%201.0/Beta_1.1_Home_screen.png) | ![Rooms screen](App%20POC%201.0/Beta_1.1_Rooms_screen.png) |
+| **Dashboard** — today's arrivals/departures, current occupancy, active bookings | **Rooms** — live room list with status badges and admin controls |
+
+| | |
+|---|---|
+| ![Availability screen](App%20POC%201.0/Beta_1.1_Availability_screen.png) | ![Booking screen](App%20POC%201.0/Beta_1.1_Booking_screen.png) |
+| **Availability Search** — date-range picker and free-room results | **Bookings** — full lifecycle with filters, search, check-in/out/cancel |
+
+| | |
+|---|---|
+| ![Guests screen](App%20POC%201.0/Beta_1.1_Guests_screen.png) | |
+| **Guests** — records, search, and per-guest booking history | |
+
+### Database
 
 | | |
 |---|---|
@@ -76,8 +114,8 @@ A modern hotel management app built with **Flutter** (mobile + web) and **Supaba
 | Layer | Technology |
 |---|---|
 | Frontend | Flutter 3.44 / Dart 3.12 (mobile + web, no desktop) |
-| State management | flutter_riverpod 3.x |
-| Navigation | go_router 17.x |
+| State management | flutter_riverpod 3.x (AsyncNotifier controllers, auto-refresh on writes) |
+| Navigation | go_router 17.x (stateful shell with branch navigation) |
 | Backend | Supabase (PostgreSQL, GoTrue auth, RLS) |
 | Config | flutter_dotenv (`.env`, git-ignored) |
 | Formatting/parsing | intl |
@@ -89,24 +127,27 @@ A modern hotel management app built with **Flutter** (mobile + web) and **Supaba
 ```
 lib/
 ├── config/          # AppConfig — .env loader (Supabase URL + anon key)
+├── models/          # Room, Guest, Booking, enums — mirror the SQL schema
 ├── screens/
 │   ├── auth/        # Login screen
-│   ├── shell/       # Responsive app shell (bottom nav / side rail)   [Phase 3]
-│   ├── dashboard/   # Dashboard placeholder                             [Phase 3]
-│   ├── rooms/       # Rooms placeholder                                 [Phase 3]
-│   ├── availability/# Availability Search placeholder                   [Phase 3]
-│   ├── bookings/    # Bookings placeholder                              [Phase 3]
-│   ├── guests/      # Guests placeholder                                [Phase 3]
-│   └── profile/     # Profile — staff name, role, sign out              [Phase 3]
-├── services/        # AuthService — Supabase auth wrapper, staff profile fetch
-├── state/           # Riverpod providers (auth state, current user, staff profile)
+│   ├── shell/       # Responsive app shell (bottom nav / side rail)
+│   ├── dashboard/   # Occupancy, today's arrivals/departures, active bookings
+│   ├── rooms/       # Room list + admin add/edit dialogs
+│   ├── availability/# Date-range availability search
+│   ├── bookings/    # Booking list + create/edit sheet, check-in/out/cancel
+│   ├── guests/      # Guest records + per-guest booking history
+│   └── profile/     # Staff profile, role badge, sign out
+├── services/        # AuthService, RoomsService, GuestsService, BookingsService
+├── state/           # Riverpod providers + controllers (auth, rooms, guests, bookings)
+├── widgets/         # StatusBadge, InfoCard
+├── theme/           # AppTheme (Material 3, indigo seed, spacing scale)
 └── main.dart        # App entry — Supabase init + router
 supabase/
 ├── migrations/
 │   ├── 0001_schema.sql   # Tables, enums, FKs, constraints, RLS enable
 │   └── 0002_rls_policies.sql  # RLS policies + is_admin() + update_room_status RPC
 └── seed.sql          # Idempotent staff seed (matched to auth.users by email)
-test/                 # Widget + config tests
+test/                 # Model + widget tests (auth gate, shell, navigation)
 App POC 1.0/          # Screenshots used in this README
 ```
 
@@ -163,14 +204,15 @@ SUPABASE_ANON_KEY=your-anon-key
 
 ```
 staff    (id, user_id → auth.users, name, role: admin|front_desk)
-rooms    (id, room_number, room_type, rate_per_night ≥ 0, capacity, status: available|occupied|cleaning|maintenance)
+rooms    (id, room_number, room_type, rate_per_night >= 0, capacity,
+          status: available|occupied|cleaning|out_of_service)
 guests   (id, full_name, contact_email, contact_phone, id_number)
 bookings (id, room_id → rooms, guest_id → guests, check_in_date, check_out_date,
-          status: booked|checked_in|checked_out|cancelled, total_price ≥ 0,
-          payment_status: unpaid|paid|refunded, created_by → staff)
+          status: booked|checked_in|checked_out|cancelled, total_price >= 0,
+          payment_status: unpaid|paid, created_by → staff)
 ```
 
-All tables have `created_at`; bookings checks `check_out_date > check_in_date`; `staff.user_id` is unique.
+All tables have `created_at`; bookings checks `check_out_date > check_in_date`; `staff.user_id` is unique. Booking `total_price` is computed client-side (room rate × nights) and stored with the booking.
 
 ---
 
@@ -184,7 +226,7 @@ All tables have `created_at`; bookings checks `check_out_date > check_in_date`; 
 | `bookings` | SELECT / INSERT / UPDATE; DELETE Admin-only | blocked |
 
 - `is_admin()` — SECURITY DEFINER helper used by policies
-- `update_room_status(room_id, status)` — SECURITY DEFINER RPC callable by any authenticated staff member; changes *only* the room status (enables Front Desk check-in/out without room-edit rights)
+- `update_room_status(room_id, status)` — SECURITY DEFINER RPC callable by any authenticated staff member; changes *only* the room status (enables Front Desk check-in/out housekeeping without room-edit rights)
 - All policies verified live against the real database (permission vs constraint errors distinguished)
 
 ---
@@ -204,7 +246,7 @@ All tables have `created_at`; bookings checks `check_out_date > check_in_date`; 
 
 ```bash
 flutter analyze    # static analysis — must be clean
-flutter test       # widget tests: auth gate (signed out → Login, signed in → Home/Profile)
+flutter test       # model tests + widget tests (auth gate, shell, navigation)
 ```
 
 ---
@@ -225,8 +267,8 @@ flutter build apk --release              # Android APK → build/app/outputs/flu
 - [x] **Phase 1** — Project initialization (web target, deps, config, app shell)
 - [x] **Phase 2** — Supabase setup (schema, auth, seed, RLS — verified live)
 - [x] **Phase 3** — Navigation & app shell (go_router, responsive shell, design system, auth wiring)
-- [ ] **Phase 4** — Core data integration (services → providers → screens: rooms, availability, bookings, guests, dashboard)
-- [ ] **Phase 5** — Polish & deployment prep
+- [x] **Phase 4** — Core data integration (rooms, availability, bookings, guests, dashboard — all live)
+- [ ] **Phase 5** — Polish & deployment prep (error/loading states audit, accessibility, performance, deployment)
 
 ---
 

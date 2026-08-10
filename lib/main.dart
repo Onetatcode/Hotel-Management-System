@@ -3,9 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'config/app_config.dart';
-import 'screens/auth/login_screen.dart';
-import 'screens/home_screen.dart';
-import 'state/auth_providers.dart';
+import 'router/app_router.dart';
+import 'theme/app_theme.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -22,14 +21,11 @@ class HotelManagementApp extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final user = ref.watch(currentUserProvider);
-    return MaterialApp(
+    final router = ref.watch(routerProvider);
+    return MaterialApp.router(
       title: 'Hotel Management App',
-      theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.indigo),
-        useMaterial3: true,
-      ),
-      home: user == null ? const LoginScreen() : const HomeScreen(),
+      theme: AppTheme.light,
+      routerConfig: router,
     );
   }
 }
