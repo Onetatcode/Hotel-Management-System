@@ -86,13 +86,24 @@ A **role-based hotel operations app** for staff — combines a responsive Flutte
 | **Active bookings** | Total booked or checked in | Derived count |
 
 
+### 🤖 Assistant (AI chatbot — OpenRouter)
+| Feature | What's Covered | Method |
+|---------|----------------|--------|
+| **7th nav destination** | Assistant tab on both mobile pill nav and desktop rail, after Profile | go_router branch + `AppShell` destinations |
+| **Conversational help** | Hotel-ops / app-usage assistant with greeting, typing indicator, auto-scroll | `ChatMessagesController` + `ChatbotService` (OpenRouter, `nvidia/nemotron-3.5-lightning:free`) |
+| **Neumorphic chat UI** | Raised surface bubbles (assistant) / lime-filled bubbles (user), inset input pill, lime send button, `ErrorState` + retry | `NeumorphicBox` / `AppColors` / shared widgets |
+| **Failure handling** | Non-200 / empty replies / timeouts surface a friendly fallback reply — the chat never crashes | `ChatbotException` + controller catch-all |
+
+> The assistant has **no direct access** to live booking/guest data (system prompt enforces this) — it guides staff on using the app, it doesn't read the database.
+
+
 ### 🎨 UI & Design
 | Feature | What's Covered | Method |
 |---------|----------------|--------|
 | **Soft neumorphic theme** | Black `#0E0F10` base, `#1C1F1D` cards, lime `#B6FF3C` accent — dual shadow (dark drop + faint highlight), no hairline borders | `AppColors`, `NeumorphicBox` in `lib/theme/` |
 | **Typography** | Manrope geometric sans, bold headings | `google_fonts` (bundled at build time) |
 | **Components** | Floating pill bottom nav, lime-filled pill buttons, ghost/outline secondary, inset search fields, outlined status pills, large-radius cards/dialogs/sheets | Shared `AppTheme` + `NeumorphicCard` / `StatusBadge` / `InfoCard` |
-| **Responsive shell** | Bottom navigation bar on mobile, side navigation rail on desktop (breakpoint 700) | `AppShell` + go_router stateful shell |
+| **Responsive shell** | Bottom navigation bar on mobile, side navigation rail on desktop (breakpoint 700) — 7 destinations | `AppShell` + go_router stateful shell |
 | **Error handling** | Error/empty states with Retry across all data screens | `ErrorState` widget |
 
 
@@ -123,9 +134,13 @@ A **role-based hotel operations app** for staff — combines a responsive Flutte
     </tr>
     <tr>
       <td><img src="App%20POC%201.1/Profile_screen.png" alt="Profile" width="250"/></td>
+      <td><img src="App%20POC%20Ai/Ai1.0.png" alt="Assistant Chat" width="250"/></td>
+      <td><img src="App%20POC%20Ai/Model%20Ai%201.0.png" alt="Assistant Model" width="250"/></td>
     </tr>
     <tr>
       <td align="center"><b>Profile</b></td>
+      <td align="center"><b>Assistant Chat</b></td>
+      <td align="center"><b>Assistant Model</b></td>
     </tr>
   </table>
 </div>
@@ -143,6 +158,7 @@ A **role-based hotel operations app** for staff — combines a responsive Flutte
 | Typography     | google_fonts — Manrope (bundled at build time)                             |
 | Formatting     | intl (date formatting)                                                     |
 | Config         | flutter_dotenv (`.env`, git-ignored)                                       |
+| Assistant      | OpenRouter API — `nvidia/nemotron-3.5-lightning:free` via `https://openrouter.ai/api/v1/chat/completions` (`http` package) |
 
 
 ## Prerequisites
@@ -204,9 +220,10 @@ create table bookings (
 ```env
 SUPABASE_URL=https://your-project-ref.supabase.co
 SUPABASE_ANON_KEY=your-anon-key
+OPENROUTER_API_KEY=your-openrouter-api-key
 ```
 
-Get these from your Supabase project (Project Settings → API). The publishable/anon key is safe to expose; the **service-role key and DB password must never leave the dashboard**.
+Get the Supabase values from your Supabase project (Project Settings → API). The publishable/anon key is safe to expose; the **service-role key and DB password must never leave the dashboard**. `OPENROUTER_API_KEY` powers the Assistant (chatbot) tab — create one at https://openrouter.ai/keys; paid models (e.g. `x-ai/grok-4.6`) need credits at https://openrouter.ai/settings/credits. The key lives in `.env` only (git-ignored); never hardcode or commit it, and rotate any key that was ever shared.
 
 
 ### 4. Seed Staff and Run
@@ -257,11 +274,12 @@ python -m http.server 3000
 ├── lib/                               # Flutter App
 │   ├── main.dart                      # App entry — Supabase init + router
 │   ├── config/
-│   │   └── app_config.dart            # .env loader (Supabase URL + anon key)
+│   │   └── app_config.dart            # .env loader (Supabase URL/anon key + OpenRouter key)
 │   ├── models/
 │   │   ├── room.dart                  # Room model + wire statuses
 │   │   ├── guest.dart                 # Guest model
 │   │   ├── booking.dart               # Booking model (dates, totals, joins)
+│   │   ├── chat_message.dart          # Chat roles + messages (Assistant)
 │   │   └── enums.dart                 # Room/Booking/Payment status enums
 │   ├── screens/
 │   │   ├── auth/
@@ -273,15 +291,18 @@ python -m http.server 3000
 │   │   ├── availability/              # Date-range availability search
 │   │   ├── bookings/                  # List + create/edit sheet + lifecycle actions
 │   │   ├── guests/                    # Guest records + booking history
-│   │   └── profile/                   # Staff profile, role badge, sign out
+│   │   ├── profile/                   # Staff profile, role badge, sign out
+│   │   └── chatbot/                   # Assistant chat screen (OpenRouter)
 │   ├── services/
 │   │   ├── auth_service.dart          # Supabase auth
 │   │   ├── rooms_service.dart         # Rooms CRUD + status RPC
 │   │   ├── guests_service.dart        # Guests CRUD
 │   │   └── bookings_service.dart      # Bookings CRUD + availability query
+│   │   └── chatbot_service.dart       # OpenRouter chat-completions client
 │   ├── state/
 │   │   ├── auth_providers.dart        # Session + staff profile providers
-│   │   └── data_providers.dart        # rooms/guests/bookings controllers
+│   │   ├── data_providers.dart        # rooms/guests/bookings controllers
+│   │   └── chatbot_providers.dart     # Chat messages controller + is-sending flag
 │   ├── widgets/
 │   │   ├── neumorphic_card.dart       # Raised neumorphic surface
 │   │   ├── status_badge.dart          # Outlined status pills
@@ -303,6 +324,7 @@ python -m http.server 3000
 ├── test/                              # Model tests + widget tests (auth gate, shell)
 ├── App POC 1.0/                       # Beta 1.0/1.1 screenshots
 ├── App POC 1.1/                       # Beta 1.2 screenshots (neumorphic redesign)
+├── App POC Ai/                        # Assistant chatbot screenshots (Ai 1.0)
 ├── .env                               # Environment variables (git-ignored)
 └── README.md
 ```

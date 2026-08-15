@@ -20,4 +20,12 @@ class AppConfig {
     }
     return key;
   }
+
+  static String get openRouterApiKey {
+    final key = dotenv.env['OPENROUTER_API_KEY'];
+    if (key == null || key.isEmpty) {
+      throw StateError('OPENROUTER_API_KEY is missing from .env');
+    }
+    return key;
+  }
 }

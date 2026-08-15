@@ -285,3 +285,53 @@ TODOs/hardcoded values: none in code. `NeumorphicBox.icon()` helper unused (Info
 #### 6. Verdict
 Overall status: **Ready — all planned phases complete; Beta 1.2 on `main`**
 - Blocking items: none. Phase 5 acceptance criteria met; audit closes the project loop. Remaining work is post-launch roadmap (payments/email/multi-property) and optional production-hardening steps (credential rotation, `total_price` trigger) which are owner-decisions, not code debt.
+
+---
+
+### Audit: Post-launch — Assistant (AI Chatbot, OpenRouter)
+**Date:** 2026-08-15
+**Auditor:** Assistant lead developer
+
+#### 1. Codebase Analysis
+Owner provided the full spec (master prompt: 7th nav destination, Grok chat, neumorphic styling, `.env`-only key). Provider switched during testing: xAI direct key rejected (403) and account had no billing; moved to **OpenRouter** (`https://openrouter.ai/api/v1/chat/completions`, OpenAI-compatible), model **`nvidia/nemotron-3.5-lightning:free`** (user choice; `x-ai/grok-4.6` verified available on the account and swap-in ready when credits are added — currently 402 without credits). Files created/modified this phase:
+- `lib/models/chat_message.dart` (new) — `ChatMessage` (role enum user/assistant, content, timestamp) + `ChatRole.wire`
+- `lib/services/chatbot_service.dart` (new) — thin `ChatbotService` (no state, mirrors `BookingsService` shape): POST `https://openrouter.ai/api/v1/chat/completions`, model `nvidia/nemotron-3.5-lightning:free`, Bearer auth, OpenAI-compatible body with hotel-ops system prompt (explicitly no live-data access), reply from `choices[0].message.content`, `ChatbotException` on non-200/empty reply, 60s timeout, injectable client+key for tests
+- `lib/state/chatbot_providers.dart` (new) — `chatbotServiceProvider`, `isSendingProvider` (legacy `StateProvider`, matches spec), `chatMessagesProvider` (`AsyncNotifierProvider<ChatMessagesController, List<ChatMessage>>`) seeded with a greeting; `send()` appends user msg → fetches reply → appends (friendly fallback on failure, never crashes)
+- `lib/screens/chatbot/chatbot_screen.dart` (new) — `ChatbotScreen`: assistant bubbles = `NeumorphicBox.raised()` on `AppColors.surface`; user bubbles = lime-filled with dark text (mirrors primary buttons); inset input pill + circular lime send button (disabled while sending); typing bubble with lime `CircularProgressIndicator`; auto-scroll on new messages; `ErrorState` + retry for load failure; `DateFormat('h:mm a')` timestamps
+- `lib/router/app_router.dart` — 7th `StatefulShellBranch` (`/assistant` → `ChatbotScreen`) after `/profile`
+- `lib/screens/shell/app_shell.dart` — `Icons.smart_toy` destination in both `_WideShell` rail and `_NarrowShell` pill nav, after Profile
+- `lib/config/app_config.dart` — `openRouterApiKey` getter (reads `OPENROUTER_API_KEY`, throws `StateError` if missing, same pattern as supabase getters)
+- `.env.example` — `OPENROUTER_API_KEY` placeholder; `.env` — real key added (git-ignored, verified)
+- `pubspec.yaml` — `http: ^1.2.0`
+- `test/chatbot_test.dart` (new) — 6 tests: payload/headers/model assertion + reply parse; non-200 → `ChatbotException`; empty reply → `ChatbotException`; controller seeds greeting + appends user/reply; error → fallback reply; blank input ignored
+- `README.md` — Assistant feature section, tech-stack row, `.env` docs (console.x.ai, rotate shared keys), structure tree
+
+TODOs/hardcoded values: none. Key lives only in `.env`.
+
+#### 2. Plan Comparison (master prompt)
+- ✅ `ChatMessage` model with role enum, content, timestamp
+- ✅ `ChatbotService` thin service, OpenAI-compatible schema, Bearer auth, `choices[0].message.content`, `ChatbotException` on non-200/empty, hotel-ops system prompt with no-data-access disclaimer
+- ✅ `AppConfig.xaiApiKey` + `.env.example` placeholder; key never committed (`.env` git-ignored)
+- ✅ `AsyncNotifierProvider` seeded with greeting + separate `StateProvider<bool>` is-sending (typing indicator without replacing the list)
+- ✅ Neumorphic chat UI per spec (raised assistant bubbles, lime user bubbles, inset input, circular lime send, typing indicator, `ErrorState` + retry, auto-scroll)
+- ✅ 7th branch + 7th destination (`smart_toy`) on both layouts, after Profile
+- ✅ `http` dependency added
+- ✅ Theme/models/services untouched; only consumes `AppColors`/`NeumorphicBox`/`ErrorState`
+- ✅ `flutter analyze` clean; `flutter test` 18/18
+
+#### 3. Missing Elements / Errors / Incorrect Implementations
+- Key pasted into chat by owner → flagged: **rotate the OpenRouter API key** (per feature security note) and update `.env` only. Not blocking dev.
+- Provider migration during testing: original xAI key returned 403 (rejected) and the replacement key's xAI workspace also blocked; OpenRouter key valid but 402 without credits → free model wired as user-selected interim; `x-ai/grok-4.6` model ID verified on the account for the swap.
+- Riverpod 3 moved `StateProvider` to `package:flutter_riverpod/legacy.dart` — used as spec requested.
+- Dart analyzer rejected `?[` null-aware index syntax on this SDK — rewrote choices parsing with explicit type checks.
+- Chat history is in-memory only (per spec — no persistence requirement).
+
+#### 4. Platform Parity Check
+- Same widget tree on both widths; pill nav gains a 7th destination (fits 68px-high bar), rail gains a 7th row. Not visually re-verified on device this session; widget tests cover auth→shell flow with the new destination registered (no route conflicts).
+
+#### 5. Orphaned / Unused Files
+- None added. No dead code; `http` used by service; `legacy.dart` import used for `StateProvider`.
+
+#### 6. Verdict
+Overall status: **Ready to proceed**
+- Blocking items: none. Feature matches the owner spec; only outstanding action is rotating the shared xAI key (owner action, `.env` only).

@@ -88,6 +88,11 @@ class _WideShell extends StatelessWidget {
                   selectedIcon: Icon(Icons.person),
                   label: Text('Profile'),
                 ),
+                NavigationRailDestination(
+                  icon: Icon(Icons.smart_toy_outlined),
+                  selectedIcon: Icon(Icons.smart_toy),
+                  label: Text('Assistant'),
+                ),
               ],
             ),
           ),
@@ -164,6 +169,11 @@ class _NarrowShell extends StatelessWidget {
                 icon: Icon(Icons.person_outline),
                 selectedIcon: Icon(Icons.person),
                 label: 'Profile',
+              ),
+              NavigationDestination(
+                icon: Icon(Icons.smart_toy_outlined),
+                selectedIcon: Icon(Icons.smart_toy),
+                label: 'Assistant',
               ),
             ],
           ),
