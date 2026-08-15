@@ -46,7 +46,4 @@ class NeumorphicBox {
       ),
     ];
   }
-
-  /// Square "soft button" icon container (smaller, tighter shadow).
-  static List<BoxShadow> icon(double size) => raised(blur: 10, offset: 5);
 }

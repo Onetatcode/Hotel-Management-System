@@ -46,7 +46,7 @@ Stack: Flutter/Dart (frontend — mobile + web only, no desktop), Supabase (auth
 - Implement Booking List/History with search and filters
 
 ## Phase 5 (Post-MVP placeholder — not detailed here)
-Polish pass: loading/error states audit, empty states, accessibility pass, performance check on both platforms. Track this phase in `task_today.md` once Phase 4 is stable and audited.
+✅ **COMPLETE (2026-08-15)** — polish pass: error/loading/empty states with Retry across all screens, accessibility/contrast pass, performance check, deployment guide; followed by the owner-requested Beta 1.2 soft neumorphic black + lime redesign (theme layer, floating pill nav, restyled screens, README rewrite, `App POC 1.1/` screenshots). Audited in `audit.md`; pushed to `main` as Beta 1.2.
 
 ---
 

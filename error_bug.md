@@ -39,6 +39,41 @@
 
 ---
 
+### #4 google_fonts native-assets hook fails — `'F:\Flutter' is not recognized` on any build/test
+
+**Status:** Resolved
+**Date Logged:** 2026-08-15
+**Phase:** Phase 5 / Beta 1.2 redesign
+**Platform:** Both
+
+**-- What Happened**
+After adding `google_fonts: ^8.2.1` (which pulls the native-assets build-hook machinery via `path_provider` → `objective_c`), every `flutter analyze`/`test`/`run`/`build` failed with `Building native assets for package:objective_c failed. Compilation of hook returned with exit code: 1` and the cryptic message `'F:\Flutter' is not recognized as an internal or external command`. Manual `dart compile kernel` of the same hook succeeded, so the tool's environment was the difference.
+
+**-- Error in Console**
+```
+'F:\Flutter' is not recognized as an internal or external command,
+operable program or batch file.
+
+Building native assets for package:objective_c failed.
+Compilation of hook returned with exit code: 1.
+To reproduce run:
+F:\Flutter SDk\flutter\bin\cache\dart-sdk\bin\dart compile kernel '--packages=...' '--output=...hook.dill' '--depfile=...' C:\Users\Onetatmen\AppData\Local\Pub\Cache\hosted\pub.dev\objective_c-9.5.0\hook\build.dart
+stderr:
+'F:\Flutter' is not recognized as an internal or external command,
+```
+
+**-- Files Involved**
+- `pubspec.yaml` (google_fonts dependency — the trigger)
+- No project source files (environment/tooling issue)
+
+**-- Root Cause**
+`google_fonts` 8.x depends on `path_provider` → `path_provider_foundation` → `objective_c` (which ships `hook/build.dart`). The flutter tool compiles every dependency's build hook before running, and `hooks_runner`'s `runProcess` spawns the compiler with `runInShell: true` on Windows when a working directory is set (hooks_runner-1.1.1 `lib/src/utils/run_process.dart`). The Flutter SDK lives at `F:\Flutter SDk\flutter` — the unquoted path is split at the space by cmd.exe, which then tries to execute `F:\Flutter`. A second blocker: google_fonts 6.2.1 (non-hooks fallback) does not compile on Dart 3.12 at all (`const` map with `FontWeight` keys — constant evaluation error).
+
+**-- Fix Applied**
+Created a junction so the SDK path contains no spaces: `New-Item -ItemType Junction -Path C:\flutter -Target "F:\Flutter SDk\flutter"` (works without admin rights). All flutter commands now run via `C:\flutter\bin\flutter.bat`; the hook compile resolves `Platform.resolvedExecutable` to the space-free path and succeeds. Kept google_fonts pinned at `^8.2.1` (fonts bundled at build time, no runtime fetch). `flutter analyze`, `flutter test` (12/12) and release web builds verified through the junction.
+
+---
+
 ### #3 Kotlin incremental-cache error broke Android debug build
 
 **Status:** Resolved

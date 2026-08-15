@@ -230,3 +230,58 @@ TODOs/hardcoded values: none. No mock data anywhere; every screen reads through 
 Overall status: **Ready to proceed**
 - Blocking items: none. Phase 4 goal met — all screens wired to live Supabase data through the state layer; zero hardcoded data.
 - Next task set in `task_today.md` per Phase 5 — Polish & deployment prep.
+
+---
+
+### Audit: Phase 5 — Polish & Deployment Prep (+ Beta 1.2 UI Redesign)
+**Date:** 2026-08-15
+**Auditor:** Assistant lead developer
+
+#### 1. Codebase Analysis
+Files created/modified this phase:
+- `lib/widgets/error_state.dart` — shared `ErrorState` (message + optional Retry via tonal pill button), applied to rooms, bookings, guests, dashboard, profile
+- `lib/main.dart` — `debugShowCheckedModeBanner: false`
+- `lib/screens/bookings/booking_form_sheet.dart` — snackbar when available-rooms fetch fails (instead of silent hang)
+- `README.md` — deployment guide (credential rotation, hosting options, `total_price` trigger SQL), compact `<img width=280>` screenshot sizing
+
+**Beta 1.2 — soft neumorphic redesign (owner-requested, visual layer only; state/router/services/models untouched):**
+- `lib/theme/app_colors.dart` (new) — palette: background `#0E0F10`, elevated `#161818`, surface `#1C1F1D`, lime `#B6FF3C`, text `#F2F2F0`, muted `#8A8D8A`, highlight `#2A2D2A`, amber/softRed/softBlue status tones
+- `lib/theme/app_shadows.dart` (new) — `NeumorphicBox.raised()` / `.inset()` dual-shadow helpers (dark bottom-right + faint top-left highlight, no hairline borders)
+- `lib/theme/app_theme.dart` — rebuilt as `AppTheme.dark`: Manrope typography (google_fonts), lime color scheme, stadium filled/outlined buttons, inset rounded inputs, pill chips, NavigationBar/Rail themes, dialog/bottom-sheet/snackbar/menu themes
+- `lib/widgets/neumorphic_card.dart` (new) — `NeumorphicCard` (raised surface + InkWell); swapped in across rooms, bookings, availability, guests, profile
+- `lib/widgets/status_badge.dart` — outlined pills with dark-palette status colors (lime=checked-in/paid/available, amber=unpaid, grey=booked/out-of-service, softRed=cancelled/occupied, softBlue=cleaning/front_desk)
+- `lib/widgets/info_card.dart` — neumorphic + soft rounded lime icon container + optional `onTap`
+- `lib/screens/shell/app_shell.dart` — floating pill bottom nav (elevated pill container, lime active indicator), restyled rail (lime indicator, soft icon container logo)
+- All screens restyled: `auth/login_screen.dart` (centered neumorphic card, icon mark), `dashboard_screen.dart` (tappable cards → `/rooms`, `/bookings`), `rooms_screen.dart`, `availability_screen.dart`, `bookings_screen.dart` (Check In/Out → lime filled, Cancel/Edit ghost), `guests_screen.dart` (themed inset search), `profile_screen.dart` (avatar + softRed ghost sign-out)
+- `pubspec.yaml` — `google_fonts: ^8.2.1` (build-time font bundling)
+- `README.md` — full rewrite in the owner-specified format (architecture diagram, feature tables, centered screenshot grid, structure tree, limitations); `App POC 1.1/` (new) — 7 Beta 1.2 screenshots
+
+TODOs/hardcoded values: none in code. `NeumorphicBox.icon()` helper unused (InfoCard inlines its own container) — removed in this audit.
+
+#### 2. Plan Comparison
+- ✅ Error/loading/empty states audit — every data screen has `ErrorState` + Retry, loading indicators, and empty messages (no raw error text / blank screens)
+- ✅ Accessibility pass — dark-palette contrast checked (lime on near-black and muted text AA-conformant at body sizes), form field labels intact, tooltips on icon-only buttons
+- ✅ Performance check — release web bundle rebuilt post-redesign (fonts now bundled at build time, no runtime fetch); no list jank changes
+- ✅ Deployment prep documented — README setup/deploy/limitations; dev test accounts **retained per owner decision** (rotation steps remain documented for production)
+- ✅ `flutter analyze` clean; `flutter test` green (12/12)
+- ✅ Verified on web/desktop width and narrow/mobile width (Edge debug runs + resize)
+
+#### 3. Missing Elements / Errors / Incorrect Implementations
+- error_bug #4 (google_fonts 8 native-assets hooks crash — SDK path contains a space) — **Resolved** via `C:\flutter` junction; all flutter commands must run through the junction path. See `error_bug.md`.
+- Also encountered: google_fonts 6.2.1 fails to compile on Dart 3.12 (const `FontWeight` map keys) — resolved by pinning `^8.2.1`.
+- Roadmap items (payments, email notifications, multi-property) remain **out of scope** — they require external services/credentials (payment gateway key, email provider) or a schema redesign; left as post-launch roadmap in README.
+- `total_price` remains client-side; the optional DB trigger is documented in README (applying it requires the dashboard SQL editor, not available from CLI).
+- Security: RLS unchanged; redesign touched no data layer; anon key unchanged; no new secrets introduced.
+
+#### 4. Platform Parity Check
+- Web (Edge): Beta 1.2 verified running on port 8387 — clean startup, Supabase init OK, no exceptions; narrow/wide layouts via resize (pill nav ↔ rail).
+- Mobile-width parity: same widget tree; emulator not re-run this phase (consistent minor gap from prior phases).
+- Breakpoint (700px) and all routes unchanged by the redesign.
+
+#### 5. Orphaned / Unused Files
+- Removed unused `NeumorphicBox.icon()` helper. No other dead code; no unused pubspec deps (path_provider etc. are transitive deps of google_fonts).
+- `New folder/` stray directory — confirmed absent from repo root (resolved since Phase 1 flag).
+
+#### 6. Verdict
+Overall status: **Ready — all planned phases complete; Beta 1.2 on `main`**
+- Blocking items: none. Phase 5 acceptance criteria met; audit closes the project loop. Remaining work is post-launch roadmap (payments/email/multi-property) and optional production-hardening steps (credential rotation, `total_price` trigger) which are owner-decisions, not code debt.
