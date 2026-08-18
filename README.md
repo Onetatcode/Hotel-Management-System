@@ -93,8 +93,28 @@ A **role-based hotel operations app** for staff — combines a responsive Flutte
 | **Conversational help** | Hotel-ops / app-usage assistant with greeting, typing indicator, auto-scroll | `ChatMessagesController` + `ChatbotService` (OpenRouter, `nvidia/nemotron-3-super-120b-a12b:free`) |
 | **Neumorphic chat UI** | Raised surface bubbles (assistant) / lime-filled bubbles (user), inset input pill, lime send button, `ErrorState` + retry | `NeumorphicBox` / `AppColors` / shared widgets |
 | **Failure handling** | Non-200 / empty replies / timeouts surface a friendly fallback reply — the chat never crashes | `ChatbotException` + controller catch-all |
+| **Defense-in-depth guardrails** | Input filters (length/history/jailbreak), output filters (leak signatures / HTML / code fences), capped tokens + low temperature, daily quota, throttle, circuit breaker | OWASP LLM Top 10 hardening — see the security section below |
+| **Daily usage quota** | Per-staff 30 messages/day, server-counted, resets daily; canned reply when exhausted | Supabase `assistant_usage` table + `update_assistant_usage` RPC (RLS, staff-verified) |
 
 > The assistant has **no direct access** to live booking/guest data (system prompt enforces this) — it guides staff on using the app, it doesn't read the database.
+
+
+### 🔒 Assistant Security (OWASP LLM Top 10, 2025)
+The Assistant is hardened item-by-item against the [OWASP Top 10 for LLM Applications (2025)](https://owasp.org/www-project-top-10-for-large-language-model-applications/) — a security red-team phase with a hermetic adversarial test suite (`test/assistant_security_test.dart`) and a live red-team battery (12 adversarial prompts through the real API, all clean). Full item-by-item audit: `audit.md` → "Phase D".
+
+| OWASP | Defense |
+|-------|---------|
+| **LLM01 — Prompt Injection** | Client-side jailbreak filter (`chatbot_providers.dart`): instruction-override, prompt-extraction, developer-mode, "do anything now" vectors are blocked **before any API call**; a defensive system prompt (BEGIN/END-marked, confidential) holds the line against novel vectors — verified live |
+| **LLM02 — Sensitive Info** | The API payload only ever contains the system prompt + chat history — guest/room/booking fields are never auto-attached; the system prompt declares no live-data access; history is in-memory only |
+| **LLM03 — Supply Chain** | Model pinned as a single constant (`nvidia/nemotron-3-super-120b-a12b:free`) — swapped after the previous free model leaked chain-of-thought live; swap documented; Phase C server-side relay deferred (owner decision) |
+| **LLM04 / LLM08 — Poisoning / Embeddings** | N/A — no training, no fine-tuning, no RAG/embeddings; documented; re-audit if RAG ("ask about your actual bookings") is ever added |
+| **LLM05 — Improper Output** | Reply guard rejects raw HTML and fenced code blocks → friendly fallback shown; UI renders plain text only |
+| **LLM06 — Excessive Agency** | Zero tools / function-calling — the payload carries no `tools`/`functions`/`tool_calls`; the model can't take any action |
+| **LLM07 — Prompt Leakage** | Extraction asks blocked client-side; output guard trips on strong leak signatures (BEGIN/END markers, identity line, instruction paraphrase); legitimate refusals pass (false-positive regression test) |
+| **LLM09 — Misinformation** | `temperature` 0.4 + `max_tokens` 500 caps, "never fabricate — say you don't know" prompt rules, UI disclaimer |
+| **LLM10 — Unbounded Consumption** | Per-staff 30/day quota (server-counted, RLS-scoped), 1s send throttle, circuit breaker (3 API failures → 30s cooldown), `max_tokens` cap — cost is bounded per reply and per staff per day |
+
+**Verification:** `flutter analyze` clean; 53/53 tests green (31 chatbot/controller + 22 adversarial security); live battery 12/12 — zero system-prompt leaks, zero chain-of-thought dumps, zero markup, every jailbreak/extraction/PII/credential ask refused or safely deflected.
 
 
 ### 🎨 UI & Design
@@ -158,7 +178,7 @@ A **role-based hotel operations app** for staff — combines a responsive Flutte
 | Typography     | google_fonts — Manrope (bundled at build time)                             |
 | Formatting     | intl (date formatting)                                                     |
 | Config         | flutter_dotenv (`.env`, git-ignored)                                       |
-| Assistant      | OpenRouter API — `nvidia/nemotron-3-super-120b-a12b:free` via `https://openrouter.ai/api/v1/chat/completions` (`http` package) |
+| Assistant      | OpenRouter API — `nvidia/nemotron-3-super-120b-a12b:free` via `https://openrouter.ai/api/v1/chat/completions` (`http` package); quota via Supabase `assistant_usage` RPC |
 
 
 ## Prerequisites
@@ -325,7 +345,7 @@ python -m http.server 3000
 │   │   └── 0003_assistant_usage.sql   # Assistant daily usage quota + RPC
 │   └── seed.sql                       # Idempotent staff seed (matched by email)
 │
-├── test/                              # Model tests + widget tests (auth gate, shell)
+├── test/                              # Chatbot + OWASP adversarial suites (53 tests), auth gate, shell
 ├── App POC 1.0/                       # Beta 1.0/1.1 screenshots
 ├── App POC 1.1/                       # Beta 1.2 screenshots (neumorphic redesign)
 ├── App POC Ai/                        # Assistant chatbot screenshots (Ai 1.0)
