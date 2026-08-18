@@ -62,13 +62,20 @@
 
 **Goal:** bound cost (LLM10) and gain visibility **without** storing sensitive prompt data.
 
-1. **Budget controls** — hard `max_tokens` + `temperature` cap in the service (from Phase A, enforced in code); optional per-user daily quota (e.g. 30 messages/day, stored in a `assistant_usage` table with RLS so staff see only their own row); OpenRouter credit-limit alert if the account is ever funded.
-2. **Rate limiting** — in-app debounce/throttle on send (client-side guard against double-taps and spam; no server needed while the key stays env-based).
-3. **Observability (PII-free)** — if/when logging is added, log only timestamp, outcome, latency, token usage — never prompt/reply content.
-4. **Circuit breaker** — on repeated 429/402/5xx, show a friendly "assistant temporarily unavailable" instead of hammering the API.
-5. **Model pinning** — model ID already a single constant in `ChatbotService`; keep it there, pin the versioned ID, and spot-check provider model changes on upgrade.
+Owner decisions (2026-08-18): Supabase-backed quota + RLS; **30 messages/day**, circuit breaker at **3 consecutive failures** with a **30s cooldown**.
 
-**Acceptance:** quota respected across app restarts; double-tap spam produces at most one request; error paths tested; zero prompt content stored anywhere.
+1. **`assistant_usage` table (migration `0003_assistant_usage.sql`)** — one row per `(staff_id, usage_date)`:
+   - Columns: `staff_id` (FK → `staff`), `usage_date` (default `current_date`), `message_count`, `error_count`, `updated_at`; unique constraint on `(staff_id, usage_date)`
+   - RLS enabled; self-scope policies via `auth.uid()` ↔ `staff.user_id`
+   - `update_assistant_usage(p_staff_id, p_message_delta, p_error_delta)` — SECURITY DEFINER RPC (same pattern as `update_room_status`): verifies the caller owns the staff row, upserts the day row with deltas, returns the new `message_count`
+2. **Quota enforcement in `ChatMessagesController.send()`** — before calling the API, invoke the RPC with `message_delta: 1`; if the returned count exceeds 30, append the canned quota reply ("reached your daily assistant limit — resets tomorrow") and skip the API call. Staff id comes from the existing staff profile provider.
+3. **Send throttle** — ignore sends within 1s of the previous initiated send (guards double-tap/spam; the send button already disables while in flight).
+4. **Circuit breaker** — controller tracks consecutive API failures: on catch, `error_count++` via RPC; after 3 in a row, block sends for 30s with a "temporarily unavailable" reply; a successful reply resets the counter.
+5. **PII-free observability** — usage counts (messages, errors) survive restarts in Postgres and are queryable later (e.g. an admin usage view); prompt/reply content is **never** stored.
+6. **Model pinning** — already done in Phase A (`ChatbotService.model` constant).
+7. **Tests** — quota-limit → canned reply without API call; circuit-breaker trip → unavailable reply without API call; success resets breaker; throttle skips rapid sends.
+
+**Acceptance:** quota respected across app restarts; spam double-taps produce at most one request per second; breaker path tested; zero prompt content stored anywhere.
 
 ---
 
@@ -110,6 +117,6 @@
 | Priority | Item | OWASP |
 |----------|------|-------|
 | P0 (now) | Phase A quick wins (defensive prompt, input/output guards, max_tokens, disclaimer) | LLM01, LLM02, LLM05, LLM07, LLM09 |
-| P1 | Phase B consumption controls (quota, throttle, circuit breaker) + UI disclaimer | LLM10 |
+| P1 | Phase B consumption controls (quota, throttle, circuit breaker) | LLM10 |
 | P2 | Phase D red-team suite + audit entry | all |
 | Deferred | Phase C server-side relay (owner decision — key stays in `.env` either way) | LLM02, LLM03 |

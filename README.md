@@ -190,6 +190,7 @@ Create a Supabase project at [supabase.com](https://supabase.com), enable the **
 
 - `supabase/migrations/0001_schema.sql` — tables, enums, FKs, constraints, RLS enable
 - `supabase/migrations/0002_rls_policies.sql` — RLS policies + `is_admin()` + `update_room_status` RPC
+- `supabase/migrations/0003_assistant_usage.sql` — AI Assistant daily usage quota (per-staff counts + `update_assistant_usage` RPC)
 
 **Database — `bookings` table (core):**
 
@@ -261,6 +262,7 @@ python -m http.server 3000
 | `rooms` | SELECT all; writes Admin-only | blocked |
 | `guests` | SELECT / INSERT / UPDATE | blocked |
 | `bookings` | SELECT / INSERT / UPDATE; DELETE Admin-only | blocked |
+| `assistant_usage` | read own row only; writes via `update_assistant_usage` RPC (staff-verified) | blocked |
 
 - `is_admin()` — SECURITY DEFINER helper used by policies
 - `update_room_status(room_id, status)` — SECURITY DEFINER RPC callable by any authenticated staff member; changes *only* the room status (enables Front Desk check-in/out housekeeping without room-edit rights)
@@ -297,8 +299,9 @@ python -m http.server 3000
 │   │   ├── auth_service.dart          # Supabase auth
 │   │   ├── rooms_service.dart         # Rooms CRUD + status RPC
 │   │   ├── guests_service.dart        # Guests CRUD
-│   │   └── bookings_service.dart      # Bookings CRUD + availability query
-│   │   └── chatbot_service.dart       # OpenRouter chat-completions client
+│   │   ├── bookings_service.dart      # Bookings CRUD + availability query
+│   │   ├── chatbot_service.dart       # OpenRouter chat-completions client
+│   │   └── assistant_usage_service.dart # Daily usage quota RPC client
 │   ├── state/
 │   │   ├── auth_providers.dart        # Session + staff profile providers
 │   │   ├── data_providers.dart        # rooms/guests/bookings controllers
@@ -318,7 +321,8 @@ python -m http.server 3000
 ├── supabase/
 │   ├── migrations/
 │   │   ├── 0001_schema.sql            # Tables, enums, FKs, constraints, RLS enable
-│   │   └── 0002_rls_policies.sql      # RLS policies + is_admin() + status RPC
+│   │   ├── 0002_rls_policies.sql      # RLS policies + is_admin() + status RPC
+│   │   └── 0003_assistant_usage.sql   # Assistant daily usage quota + RPC
 │   └── seed.sql                       # Idempotent staff seed (matched by email)
 │
 ├── test/                              # Model tests + widget tests (auth gate, shell)

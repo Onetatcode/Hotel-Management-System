@@ -5,7 +5,10 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:hotelms/models/chat_message.dart';
+import 'package:hotelms/services/assistant_usage_service.dart';
+import 'package:hotelms/services/auth_service.dart';
 import 'package:hotelms/services/chatbot_service.dart';
+import 'package:hotelms/state/auth_providers.dart';
 import 'package:hotelms/state/chatbot_providers.dart';
 
 ChatMessage _msg(ChatRole role, String content) => ChatMessage(
@@ -13,6 +16,25 @@ ChatMessage _msg(ChatRole role, String content) => ChatMessage(
       content: content,
       timestamp: DateTime(2026, 8, 15, 12),
     );
+
+class _FakeUsageService extends AssistantUsageService {
+  _FakeUsageService({this.returnedCount = 1});
+
+  int returnedCount;
+  int calls = 0;
+  final records = <(String, int, int)>[];
+
+  @override
+  Future<int> recordUsage({
+    required String staffId,
+    int messageDelta = 1,
+    int errorDelta = 0,
+  }) async {
+    calls++;
+    records.add((staffId, messageDelta, errorDelta));
+    return returnedCount;
+  }
+}
 
 void main() {
   group('ChatbotService', () {
@@ -227,6 +249,32 @@ void main() {
           apiKey: 'test-key',
         );
 
+    List<dynamic> guardOverrides({
+      required ChatbotService chat,
+      AssistantUsageService? usage,
+      int quota = 30,
+      Duration minInterval = Duration.zero,
+      int breakerThreshold = 3,
+      Duration breakerCooldown = const Duration(days: 1),
+    }) =>
+        [
+          chatbotServiceProvider.overrideWithValue(chat),
+          assistantUsageServiceProvider
+              .overrideWithValue(usage ?? _FakeUsageService()),
+          assistantDailyQuotaProvider.overrideWithValue(quota),
+          assistantMinSendIntervalProvider.overrideWithValue(minInterval),
+          assistantBreakerThresholdProvider.overrideWithValue(breakerThreshold),
+          assistantBreakerCooldownProvider.overrideWithValue(breakerCooldown),
+          staffProfileProvider.overrideWith(
+            (ref) async => const StaffProfile(
+              id: 'staff-1',
+              userId: 'user-1',
+              name: 'Front Desk',
+              role: 'front_desk',
+            ),
+          ),
+        ];
+
     (ChatbotService, List<Map<String, dynamic>>) recordingService() {
       final bodies = <Map<String, dynamic>>[];
       final service = ChatbotService(
@@ -344,7 +392,7 @@ void main() {
     test('only the most recent messages are sent to the API', () async {
       final (service, bodies) = recordingService();
       final container = ProviderContainer(overrides: [
-        chatbotServiceProvider.overrideWithValue(service),
+        ...guardOverrides(chat: service),
       ]);
       addTearDown(container.dispose);
 
@@ -369,6 +417,127 @@ void main() {
         ChatMessagesController.maxHistoryMessages,
       );
       expect(lastMessages.last, {'role': 'user', 'content': 'message 24'});
+    });
+
+    test('quota exceeded blocks the API call with a canned reply', () async {
+      final usage = _FakeUsageService(returnedCount: 31);
+      final (service, bodies) = recordingService();
+      final container = ProviderContainer(overrides: [
+        ...guardOverrides(chat: service, usage: usage, quota: 30),
+      ]);
+      addTearDown(container.dispose);
+
+      await container.read(chatMessagesProvider.future);
+      await container.read(chatMessagesProvider.notifier).send('hello');
+
+      expect(bodies, isEmpty);
+      expect(usage.calls, 1);
+      final messages = container.read(chatMessagesProvider).value!;
+      expect(messages, hasLength(3));
+      expect(messages[2].role, ChatRole.assistant);
+      expect(messages[2].content, contains("today's assistant limit"));
+    });
+
+    test('under-quota sends are recorded with the staff id', () async {
+      final usage = _FakeUsageService(returnedCount: 1);
+      final container = ProviderContainer(overrides: [
+        ...guardOverrides(chat: fakeService('hi'), usage: usage),
+      ]);
+      addTearDown(container.dispose);
+
+      await container.read(chatMessagesProvider.future);
+      await container.read(chatMessagesProvider.notifier).send('hello');
+
+      expect(usage.calls, 1);
+      expect(usage.records.single, ('staff-1', 1, 0));
+      expect(
+        container.read(chatMessagesProvider).value,
+        hasLength(3),
+      );
+    });
+
+    test('repeated API failures trip the circuit breaker', () async {
+      final failing = ChatbotService(
+        client: MockClient((request) async => http.Response('nope', 500)),
+        apiKey: 'test-key',
+      );
+      final container = ProviderContainer(overrides: [
+        ...guardOverrides(chat: failing, breakerThreshold: 3),
+      ]);
+      addTearDown(container.dispose);
+
+      await container.read(chatMessagesProvider.future);
+      for (var i = 0; i < 3; i++) {
+        await container.read(chatMessagesProvider.notifier).send('msg $i');
+      }
+      var messages = container.read(chatMessagesProvider).value!;
+      expect(messages[2].content, contains('Sorry'));
+      expect(messages[4].content, contains('Sorry'));
+      expect(messages[6].content, contains('Sorry'));
+
+      await container.read(chatMessagesProvider.notifier).send('msg 3');
+      messages = container.read(chatMessagesProvider).value!;
+      expect(messages[8].content, contains('temporarily unavailable'));
+    });
+
+    test('a successful reply resets the circuit breaker', () async {
+      var calls = 0;
+      final flaky = ChatbotService(
+        client: MockClient((request) async {
+          calls++;
+          if (calls == 1 || calls == 2 || calls == 4) {
+            return http.Response('nope', 500);
+          }
+          return http.Response(
+            jsonEncode({
+              'choices': [
+                {'message': {'content': 'recovered'}},
+              ],
+            }),
+            200,
+          );
+        }),
+        apiKey: 'test-key',
+      );
+      final container = ProviderContainer(overrides: [
+        ...guardOverrides(chat: flaky, breakerThreshold: 3),
+      ]);
+      addTearDown(container.dispose);
+
+      await container.read(chatMessagesProvider.future);
+      await container.read(chatMessagesProvider.notifier).send('a');
+      await container.read(chatMessagesProvider.notifier).send('b');
+      await container.read(chatMessagesProvider.notifier).send('c');
+
+      var messages = container.read(chatMessagesProvider).value!;
+      expect(messages[2].content, contains('Sorry'));
+      expect(messages[4].content, contains('Sorry'));
+      expect(messages[6].content, 'recovered');
+
+      await container.read(chatMessagesProvider.notifier).send('d');
+      messages = container.read(chatMessagesProvider).value!;
+      expect(messages[8].content, contains('Sorry'));
+      expect(messages[8].content, isNot(contains('temporarily')));
+    });
+
+    test('rapid sends are throttled to one per interval', () async {
+      final (service, bodies) = recordingService();
+      final container = ProviderContainer(overrides: [
+        ...guardOverrides(
+          chat: service,
+          minInterval: const Duration(seconds: 60),
+        ),
+      ]);
+      addTearDown(container.dispose);
+
+      await container.read(chatMessagesProvider.future);
+      await container.read(chatMessagesProvider.notifier).send('first');
+      await container.read(chatMessagesProvider.notifier).send('second');
+
+      expect(bodies, hasLength(1));
+      final messages = container.read(chatMessagesProvider).value!;
+      expect(messages, hasLength(3));
+      expect(messages[1].content, 'first');
     });
   });
 }
