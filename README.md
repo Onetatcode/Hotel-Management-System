@@ -90,7 +90,7 @@ A **role-based hotel operations app** for staff — combines a responsive Flutte
 | Feature | What's Covered | Method |
 |---------|----------------|--------|
 | **7th nav destination** | Assistant tab on both mobile pill nav and desktop rail, after Profile | go_router branch + `AppShell` destinations |
-| **Conversational help** | Hotel-ops / app-usage assistant with greeting, typing indicator, auto-scroll | `ChatMessagesController` + `ChatbotService` (OpenRouter, `nvidia/nemotron-3.5-lightning:free`) |
+| **Conversational help** | Hotel-ops / app-usage assistant with greeting, typing indicator, auto-scroll | `ChatMessagesController` + `ChatbotService` (OpenRouter, `nvidia/nemotron-3-super-120b-a12b:free`) |
 | **Neumorphic chat UI** | Raised surface bubbles (assistant) / lime-filled bubbles (user), inset input pill, lime send button, `ErrorState` + retry | `NeumorphicBox` / `AppColors` / shared widgets |
 | **Failure handling** | Non-200 / empty replies / timeouts surface a friendly fallback reply — the chat never crashes | `ChatbotException` + controller catch-all |
 
@@ -158,7 +158,7 @@ A **role-based hotel operations app** for staff — combines a responsive Flutte
 | Typography     | google_fonts — Manrope (bundled at build time)                             |
 | Formatting     | intl (date formatting)                                                     |
 | Config         | flutter_dotenv (`.env`, git-ignored)                                       |
-| Assistant      | OpenRouter API — `nvidia/nemotron-3.5-lightning:free` via `https://openrouter.ai/api/v1/chat/completions` (`http` package) |
+| Assistant      | OpenRouter API — `nvidia/nemotron-3-super-120b-a12b:free` via `https://openrouter.ai/api/v1/chat/completions` (`http` package) |
 
 
 ## Prerequisites

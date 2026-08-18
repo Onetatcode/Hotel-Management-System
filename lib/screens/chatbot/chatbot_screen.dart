@@ -188,48 +188,65 @@ class _ChatInputBar extends StatelessWidget {
   Widget build(BuildContext context) {
     return SafeArea(
       top: false,
-      child: Container(
-        margin: const EdgeInsets.fromLTRB(16, 8, 16, 16),
-        padding: const EdgeInsets.fromLTRB(16, 4, 4, 4),
-        decoration: BoxDecoration(
-          color: AppColors.elevated,
-          borderRadius: BorderRadius.circular(AppSpacing.radiusPill),
-          boxShadow: NeumorphicBox.inset(),
-        ),
-        child: Row(
-          children: [
-            Expanded(
-              child: TextField(
-                controller: controller,
-                minLines: 1,
-                maxLines: 4,
-                textInputAction: TextInputAction.send,
-                onSubmitted: (_) {
-                  if (!isSending) onSend();
-                },
-                decoration: const InputDecoration(
-                  hintText: 'Ask about hotel ops…',
-                  border: InputBorder.none,
-                  isDense: true,
-                  contentPadding: EdgeInsets.symmetric(
-                    vertical: AppSpacing.sm + 2,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            margin: const EdgeInsets.fromLTRB(16, 8, 16, 4),
+            padding: const EdgeInsets.fromLTRB(16, 4, 4, 4),
+            decoration: BoxDecoration(
+              color: AppColors.elevated,
+              borderRadius: BorderRadius.circular(AppSpacing.radiusPill),
+              boxShadow: NeumorphicBox.inset(),
+            ),
+            child: Row(
+              children: [
+                Expanded(
+                  child: TextField(
+                    controller: controller,
+                    minLines: 1,
+                    maxLines: 4,
+                    textInputAction: TextInputAction.send,
+                    onSubmitted: (_) {
+                      if (!isSending) onSend();
+                    },
+                    decoration: const InputDecoration(
+                      hintText: 'Ask about hotel ops…',
+                      border: InputBorder.none,
+                      isDense: true,
+                      contentPadding: EdgeInsets.symmetric(
+                        vertical: AppSpacing.sm + 2,
+                      ),
+                    ),
                   ),
                 ),
+                IconButton(
+                  onPressed: isSending ? null : onSend,
+                  icon: const Icon(Icons.send),
+                  style: IconButton.styleFrom(
+                    backgroundColor: AppColors.lime,
+                    foregroundColor: AppColors.background,
+                    disabledBackgroundColor: AppColors.highlight,
+                    disabledForegroundColor: AppColors.textMuted,
+                    shape: const CircleBorder(),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const Padding(
+            padding: EdgeInsets.fromLTRB(24, 0, 24, 8),
+            child: Text(
+              'AI-generated — verify important details with a supervisor. '
+              'The assistant has no access to live data.',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 10,
+                color: AppColors.textMuted,
               ),
             ),
-            IconButton(
-              onPressed: isSending ? null : onSend,
-              icon: const Icon(Icons.send),
-              style: IconButton.styleFrom(
-                backgroundColor: AppColors.lime,
-                foregroundColor: AppColors.background,
-                disabledBackgroundColor: AppColors.highlight,
-                disabledForegroundColor: AppColors.textMuted,
-                shape: const CircleBorder(),
-              ),
-            ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
