@@ -5,21 +5,25 @@
 ---
 
 ## Current Task
-✅ **COMPLETE — Assistant (AI chatbot) feature shipped.** 7th nav destination — finished 2026-08-15. Provider: OpenRouter (`nvidia/nemotron-3.5-lightning:free`; `x-ai/grok-4.6` swap-in when account is funded). Full audit entry in `audit.md` (post-launch feature). No active implementation task remains.
+✅ **COMPLETE — AI Assistant security red-team (OWASP LLM Top 10, 2025).** Finished 2026-08-18 across three phases:
+
+- **Phase A** (committed `a8afc9b`): defensive system prompt (BEGIN/END markers, no-CoT, no-reveal/no-fabrication), input guards (2,000-char cap, last-20 history cap, jailbreak/extraction filter), output guards (`max_tokens` 500, `temperature` 0.4, leak-signature + HTML/code-fence rejection), UI disclaimer, model swap to `nvidia/nemotron-3-super-120b-a12b:free` after the previous free model leaked chain-of-thought live.
+- **Phase B** (committed `0241008`): per-staff 30/day quota (Supabase `assistant_usage` + `update_assistant_usage` RPC, RLS self-scope), 1s send throttle, circuit breaker (3 fails → 30s cooldown), fail-open design.
+- **Phase D** (this commit): adversarial unit suite `test/assistant_security_test.dart` (22 tests, all hermetic); live red-team battery (12 adversarial prompts through the real OpenRouter API) — **12/12 clean**: zero system-prompt leak, zero chain-of-thought dump, zero markup, clean refusals on every jailbreak/extraction/PII/credential ask; OWASP item-by-item audit entry in `audit.md`.
 
 ## Why This Task Is Closed
-- `lib/models/chat_message.dart`, `lib/services/chatbot_service.dart` (xAI chat-completions client, `ChatbotException`), `lib/state/chatbot_providers.dart` (`ChatMessagesController` + `isSendingProvider`), `lib/screens/chatbot/chatbot_screen.dart` (neumorphic chat UI) — all following existing Beta 1.2 patterns.
-- 7th `StatefulShellBranch` (`/assistant`) + `smart_toy` destination on both rail and pill nav.
-- `XAI_API_KEY`/`OPENROUTER_API_KEY` in `.env` (git-ignored) + `.env.example` placeholder + `AppConfig` getter. `http` added to pubspec.
-- `flutter analyze` clean; `flutter test` 18/18 (6 new chatbot tests: service payload/errors, controller append/fallback/blank-input).
-- README updated (feature section, tech stack, `.env` docs, structure tree).
+- Every in-scope OWASP LLM item closed: LLM01 Prompt Injection PASS (client filter + model defense), LLM02 Sensitive Info PASS (no data auto-attached), LLM03 Supply Chain PARTIAL (deferred to Phase C relay), LLM04/LLM08 N/A (no RAG/embeddings — documented), LLM05 Output Handling PASS, LLM06 Excessive Agency PASS (zero tools), LLM07 Prompt Leakage PASS, LLM09 Misinformation PASS (caps + disclaimer + no-fabricate rules), LLM10 Unbounded Consumption PASS (quota 30/day server-counted, throttle, breaker).
+- Full verification: `flutter analyze` clean; `flutter test` green (chat + security suites).
 
 ## Remaining (owner-decisions, not code debt)
 - **Rotate the OpenRouter API key** (and the xAI key) — both were pasted into a chat session; per the feature's own security note, any key ever shared must be rotated. Rotate at https://openrouter.ai/keys and update `.env` only.
-- **Post-launch roadmap:** payment processing, email notifications, multi-property support — require external credentials (payment gateway, email provider) or schema redesign.
-- **Production hardening (optional, deferred):** credential rotation before real deployment (dev accounts intentionally retained for now), optional `total_price` DB trigger (SQL documented in README), hosting + APK release when the owner decides.
+- **Phase C server-side relay (deferred by owner)** — moves the key off the client; would close LLM03. Only if the owner funds/wants it.
+- **RAG ("ask about your actual bookings")** — would reopen LLM01/LLM04/LLM08 and needs a fresh audit before enabling; not currently planned.
+- **Budget ceiling** — only relevant if a paid model (e.g. `x-ai/grok-4.6`) is funded; consider an OpenRouter credit-limit alert then.
+- **Post-launch roadmap:** payment processing, email notifications, multi-property support — require external credentials or schema redesign.
 
 ## Notes / Blockers
 - Dev test accounts kept per owner instruction — do NOT rotate/delete them.
 - All flutter commands must use the `C:\flutter` junction path (space-in-SDK-path hook bug).
-- The Assistant never sends live booking/guest data to Grok; system prompt enforces it has no data access.
+- The Assistant never sends live booking/guest data to the model; system prompt enforces it has no data access; history is in-memory only.
+- The 12-prompt live red-team script was a temporary evidence script (results recorded in `audit.md`) — intentionally not kept in the repo so the suite stays hermetic.
