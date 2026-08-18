@@ -1,6 +1,6 @@
 # Hotel Management System
 
-A **role-based hotel operations app** for staff — combines a responsive Flutter app (mobile + web) with Supabase (PostgreSQL, Auth, Row Level Security) to manage rooms, guests, and bookings end-to-end, wrapped in a soft neumorphic black + lime interface.
+A **role-based hotel operations app** for staff combines a responsive Flutter app (mobile + web) with Supabase (PostgreSQL, Auth, Row Level Security) to manage rooms, guests, and bookings end-to-end, wrapped in a soft neumorphic black + lime interface.
 
 **Try it**: Sign in as Admin or Front Desk staff → land on the Dashboard with today's arrivals, departures, and live occupancy → open Rooms to flip statuses or (as Admin) add/edit/delete rooms → search Availability by date range → create bookings with auto-computed totals, then Check In, Cancel, or Edit them → Check Out and the room goes to cleaning automatically → manage guest records with per-guest booking history → sign out from the Profile screen.
 
